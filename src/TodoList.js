@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import TodoItem from './TodoItem';
 import TodoForm from './TodoForm';
-
-const API_URL = '/api/todos/';
+import * as apiCalls from './API';
 
 class TodoList extends Component {
     constructor(props) {
@@ -18,103 +17,33 @@ class TodoList extends Component {
         this.loadTodos();
     }
 
-    loadTodos() {
-        fetch(API_URL).then(res => {
-            if (!res.ok) {
-                if (res.status >= 400 && res.status < 500) {
-                    return res.json().then(data => {
-                        let err = {errMessage: data.message}
-                        throw err;
-                    });
-                } else {
-                    let err = {errMessage: 'Server is not responding.'}
-                    throw err;
-                }
-            } return res.json();
-        }).then(todos => this.setState({todos}));
+    async loadTodos() {
+        let todos = await apiCalls.fetchTodos();
+        this.setState({todos});
     }
 
-    addTodo(value) {
-        fetch(API_URL, {
-            method: 'post',
-            headers: new Headers({
-                'content-type': 'application/json'
-            }),
-            body: JSON.stringify({name: value})
-        }).then(res => {
-            if (!res.ok) {
-                if (res.status >= 400 && res.status < 500) {
-                    return res.json().then(data => {
-                        let err = {errMessage: data.message}
-                        throw err;
-                    });
-                } else {
-                    let err = {errMessage: 'Server is not responding.'}
-                    throw err;
-                }
-            } return res.json();
-        }).then(newTodo => {
-            this.setState({todos: [...this.state.todos, newTodo]});
-        })
+    async addTodo(value) {
+        let newTodo = await apiCalls.createTodo(value);
+        this.setState({todos: [...this.state.todos, newTodo]});
     }
 
-    deleteTodo(id) {
-        const deleteURL = API_URL + id;
-
-        fetch(deleteURL, {
-            method: 'delete'
-        }).then(res => {
-            if (!res.ok) {
-                if (res.status >= 400 && res.status < 500) {
-                    return res.json().then(data => {
-                        let err = {errMessage: data.message}
-                        throw err;
-                    });
-                } else {
-                    let err = {errMessage: 'Server is not responding.'}
-                    throw err;
-                }
-            } return res.json();
-        }).then(() => {
-            const todos = this.state.todos.filter(todo => todo._id !== id);
-            this.setState({todos: todos});
-        })
+    async deleteTodo(id) {
+        await apiCalls.removeTodo(id);
+        const todos = this.state.todos.filter(todo => todo._id !== id);
+        this.setState({todos: todos});
     }
 
-    toggleTodo(todo) {
-        const updateURL = API_URL + todo._id;
-
-        fetch(updateURL, {
-            method: 'put',
-            headers: new Headers({
-                'content-type': 'application/json'
-            }),
-            body: JSON.stringify({completed: !todo.completed})
-        }).then(res => {
-            if (!res.ok) {
-                if (res.status >= 400 && res.status < 500) {
-                    return res.json().then(data => {
-                        let err = {errMessage: data.message}
-                        throw err;
-                    });
-                } else {
-                    let err = {errMessage: 'Server is not responding.'}
-                    throw err;
-                }
-            } return res.json();
-        }).then(updatedTodo => {
-            const todos = this.state.todos.map((t) => (
-                t._id === updatedTodo._id ? {...t, completed: !t.completed} : t
-            ));
-            this.setState({todos: todos});
-        })
+    async toggleTodo(todo) {
+        let updatedTodo = await apiCalls.updateTodo(todo);
+        const todos = this.state.todos.map((t) => (
+            t._id === updatedTodo._id ? {...t, completed: !t.completed} : t
+        ));
+        this.setState({todos: todos});
     }
 
     render() {
         const todos = this.state.todos.map((t) => (
-            <TodoItem key={t._id}
-                {...t}
-
+            <TodoItem key={t._id} {...t}
                 onDelete={this.deleteTodo.bind(this, t._id)}
                 onToggle={this.toggleTodo.bind(this, t)}
             />
@@ -123,12 +52,8 @@ class TodoList extends Component {
         return (
             <div>
                 <h1>todolist</h1>
-
                 <TodoForm addTodo={this.addTodo} />
-
-                <ul>
-                    {todos}
-                </ul>
+                <ul>{todos}</ul>
             </div>
         );
     }
